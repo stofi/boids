@@ -123,7 +123,7 @@ export default function Scene() {
     maxSpeed: { value: 2, min: 0, max: 10, label: 'Max Speed' },
     maxForce: { value: 1, min: 0, max: 10, label: 'Max Force' },
     perceptionRadius: {
-      value: 3,
+      value: 6,
       min: 0,
       max: 50,
       label: 'Perception',
