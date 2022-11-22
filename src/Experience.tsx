@@ -6,16 +6,20 @@ import { Leva } from 'leva'
 
 import Scene from './objets/Scene'
 
+//window has #debug
+const isDebug = window.location.hash === '#debug'
+
 export default function Experience() {
   return (
     <>
-      <Leva hidden={false} />
+      <Leva hidden={!isDebug} />
       <Canvas
         flat={false}
         shadows={true}
         dpr={1}
         camera={{
           position: [5, 5, 5],
+          near: 0.75,
         }}
       >
         <color args={['midnightblue']} attach='background' />
