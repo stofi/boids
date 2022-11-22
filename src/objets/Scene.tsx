@@ -49,34 +49,55 @@ export default function Scene() {
 
   const boidRefs = useRef<THREE.Mesh[]>([])
 
-  const boidMeshes = useMemo(
+  const boidMeshes = (startI: number) => (
+    <group>
+      {boids.map((boid, i) => (
+        <mesh
+          geometry={boidGeometry}
+          material={boidMaterial}
+          key={i}
+          position={boid.position}
+          rotation={boid.rotation}
+          ref={(ref) => ref && (boidRefs.current[startI + i] = ref)}
+        >
+          <mesh
+            geometry={boidFrontGeometry}
+            material={boidFrontMaterial}
+            rotation-x={-Math.PI / 2}
+            position-z={-0.15}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+  const n = 1
+
+  const repeatedBoidMeshes = useMemo(
     () => (
       <group>
-        {boids.map((boid, i) => (
-          <mesh
-            geometry={boidGeometry}
-            material={boidMaterial}
-            key={i}
-            position={boid.position}
-            rotation={boid.rotation}
-            ref={(ref) => ref && (boidRefs.current[i] = ref)}
-          >
-            <mesh
-              geometry={boidFrontGeometry}
-              material={boidFrontMaterial}
-              rotation-x={-Math.PI / 2}
-              position-z={-0.15}
-            />
-            {/* <mesh
-              scale={10 * boid.perceptionRadius}
-              geometry={boidGeometry}
-              material={boundsMaterial}
-            ></mesh> */}
-          </mesh>
-        ))}
+        {/* position in n^3 grid */}
+        {new Array(n ** 3).fill(null).map((_, i) => {
+          const size = boundsEnd.clone().sub(boundsStart)
+          const offset = size.clone().divideScalar(2).add(boundsStart)
+          const x = i % n
+          const y = Math.floor((i / n) % n)
+          const z = Math.floor(i / n ** 2)
+
+          const position = new THREE.Vector3(
+            x * size.x - offset.x,
+            y * size.y - offset.y,
+            z * size.z - offset.z,
+          )
+
+          return (
+            <group key={i} position={position}>
+              {boidMeshes(i * count)}
+            </group>
+          )
+        })}
       </group>
     ),
-    [boids],
+    [],
   )
 
   const {
@@ -108,8 +129,11 @@ export default function Scene() {
 
     boids.forEach((boid, i) => {
       boid.update()
-      boidRefs.current[i].position.copy(boid.position)
-      boidRefs.current[i].rotation.copy(boid.rotation)
+
+      new Array(n ** 3).fill(null).forEach((_, j) => {
+        boidRefs.current[j * count + i].position.copy(boid.position)
+        boidRefs.current[j * count + i].rotation.copy(boid.rotation)
+      })
     })
   })
 
@@ -123,7 +147,7 @@ export default function Scene() {
 
       <Environment preset='sunset' background={false}></Environment>
 
-      {boidMeshes}
+      {repeatedBoidMeshes}
     </>
   )
 }
