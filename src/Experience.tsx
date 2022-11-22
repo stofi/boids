@@ -18,7 +18,7 @@ export default function Experience() {
           position: [5, 5, 5],
         }}
       >
-        <color args={['lightblue']} attach='background' />
+        <color args={['midnightblue']} attach='background' />
         <Suspense>
           <Scene />
         </Suspense>
