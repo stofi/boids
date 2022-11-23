@@ -21,6 +21,8 @@ export default class Boid {
   private maxForce = 0.05
   private maxSpeed = 0.2
 
+  private checkFov = true
+
   get rotation(): Euler {
     const quaternion = new Quaternion()
     const rotation = new Euler()
@@ -66,11 +68,10 @@ export default class Boid {
 
     for (const other of boids) {
       const d = this.position.distanceTo(other.position)
+      if (!this.isNeighborValid(other)) continue
 
-      if (other !== this && d < this.perceptionRadius) {
-        steering.add(other.velocity)
-        total++
-      }
+      steering.add(other.velocity)
+      total++
     }
 
     if (total > 0) {
@@ -90,10 +91,10 @@ export default class Boid {
     for (const other of boids) {
       const d = this.position.distanceTo(other.position)
 
-      if (other !== this && d < this.perceptionRadius) {
-        steering.add(other.position)
-        total++
-      }
+      if (!this.isNeighborValid(other)) continue
+
+      steering.add(other.position)
+      total++
     }
 
     if (total > 0) {
@@ -113,15 +114,14 @@ export default class Boid {
 
     for (const other of boids) {
       const d = this.position.distanceTo(other.position)
+      if (!this.isNeighborValid(other)) continue
 
-      if (other !== this && d < this.perceptionRadius) {
-        const diff = new Vector3().subVectors(this.position, other.position)
+      const diff = new Vector3().subVectors(this.position, other.position)
 
-        diff.normalize()
-        diff.divideScalar(d)
-        steering.add(diff)
-        total++
-      }
+      diff.normalize()
+      diff.divideScalar(d)
+      steering.add(diff)
+      total++
     }
 
     if (total > 0) {
@@ -194,7 +194,7 @@ export default class Boid {
     }
   }
 
-  update(): void {
+  update(delta?: number): void {
     this.position.add(this.lerpVelocity)
     this.velocity.add(this.acceleration)
     this.acceleration.multiplyScalar(0)
@@ -223,7 +223,33 @@ export default class Boid {
     this.maxForce = this.baseMaxForce * maxForceFactor
   }
 
+  setBounds(boundsStart: Vector3, boundsEnd: Vector3): void {
+    this.boundsStart = boundsStart
+    this.boundsEnd = boundsEnd
+  }
+
   getVelocity(): Vector3 {
     return this.velocity.clone()
+  }
+
+  isInFieldOfView(other: Boid, maxAngleDeg: number): boolean {
+    const maxAngle = (Math.PI / 180) * maxAngleDeg
+
+    const relativePosition = new Vector3().subVectors(
+      other.position,
+      this.position,
+    )
+    const angle = this.velocity.angleTo(relativePosition)
+
+    return angle < maxAngle
+  }
+
+  isNeighborValid(other: Boid): boolean {
+    const d = this.position.distanceTo(other.position)
+    if (other === this) return false
+    if (d >= this.perceptionRadius) return false
+    if (this.checkFov && this.isInFieldOfView(other, 45)) return false
+
+    return true
   }
 }

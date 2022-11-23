@@ -32,6 +32,7 @@ module.exports = {
     'prettier',
   ],
   rules: {
+    'no-debugger': 'warn',
     'prettier/prettier': 'error',
     'react/react-in-jsx-scope': 'off',
     'react/no-unknown-property': 'off',
