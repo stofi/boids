@@ -115,7 +115,7 @@ export default function Boids(props: IBoidsProps) {
     maxSpeed: { value: 2, min: 0, max: 10, label: 'Max Speed' },
     maxForce: { value: 1, min: 0, max: 10, label: 'Max Force' },
     perceptionRadius: {
-      value: 6,
+      value: 7,
       min: 0,
       max: 50,
       label: 'Perception',
