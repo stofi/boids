@@ -140,14 +140,14 @@ export default class Boid {
     return steering
   }
 
-  addRandomForce(): void {
+  addRandomForce(scale = 1 / 1000): void {
     const force = new Vector3(
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     )
       .normalize()
-      .multiplyScalar(this.maxForce / 1000)
+      .multiplyScalar(this.maxForce * scale)
 
     this.acceleration.add(force)
   }
@@ -156,7 +156,6 @@ export default class Boid {
     this.acceleration.add(this.separate(boids))
     this.acceleration.add(this.align(boids))
     this.acceleration.add(this.cohere(boids))
-    this.addRandomForce()
   }
 
   doAvoid(position: Vector3, normal: Vector3): void {
@@ -307,5 +306,24 @@ export default class Boid {
     if (this.checkFov && this.isInFieldOfView(other, 45)) return false
 
     return true
+  }
+
+  static splitBoidsIntoRegions(boids: Boid[]): Boid[][][][] {
+    // split boids into regions of unit size
+    const regions: Boid[][][][] = []
+
+    for (const boid of boids) {
+      const x = Math.floor(boid.position.x)
+      const y = Math.floor(boid.position.y)
+      const z = Math.floor(boid.position.z)
+
+      if (!regions[x]) regions[x] = []
+      if (!regions[x][y]) regions[x][y] = []
+      if (!regions[x][y][z]) regions[x][y][z] = []
+
+      regions[x][y][z].push(boid)
+    }
+
+    return regions
   }
 }

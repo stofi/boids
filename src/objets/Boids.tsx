@@ -156,6 +156,7 @@ export default function Boids(props: IBoidsProps) {
       boid.setPerceptionRadius(perceptionRadius)
       boid.setBounds(boundsStart, boundsEnd)
       boid.flock(boids)
+      boid.addRandomForce()
       boid.keepToCenter()
       // boid.avoid(obstacles.current)
     })

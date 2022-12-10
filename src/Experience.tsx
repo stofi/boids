@@ -22,7 +22,7 @@ export default function Experience() {
           near: 0.75,
         }}
       >
-        <color args={['midnightblue']} attach='background' />
+        <color args={['skyblue']} attach='background' />
         <Suspense>
           <Scene />
         </Suspense>
