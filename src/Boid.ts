@@ -15,6 +15,7 @@ export default class Boid {
   private cohereFactor = 1
   private separateFactor = 1
   private avoidanceFactor = 1
+  private keepToCenterFactor = 1
 
   private baseMaxForce = 0.008
   private baseMaxSpeed = 0.1
@@ -37,7 +38,11 @@ export default class Boid {
     return rotation
   }
 
-  constructor(private boundsStart: Vector3, private boundsEnd: Vector3) {
+  constructor(
+    private boundsStart: Vector3,
+    private boundsEnd: Vector3,
+    private type = 'boid',
+  ) {
     this.velocity = new Vector3(
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
@@ -114,7 +119,7 @@ export default class Boid {
 
     for (const other of boids) {
       const d = this.position.distanceTo(other.position)
-      if (!this.isNeighborValid(other)) continue
+      if (!this.isNeighborValid(other, true)) continue
 
       const diff = new Vector3().subVectors(this.position, other.position)
 
@@ -142,7 +147,7 @@ export default class Boid {
       Math.random() * 2 - 1,
     )
       .normalize()
-      .multiplyScalar(this.maxForce / 100)
+      .multiplyScalar(this.maxForce / 1000)
 
     this.acceleration.add(force)
   }
@@ -194,6 +199,54 @@ export default class Boid {
     }
   }
 
+  keepToCenter(): void {
+    const center = new Vector3()
+    center.add(this.boundsStart)
+    center.add(this.boundsEnd)
+    center.divideScalar(2)
+
+    const distance = center.distanceTo(this.position)
+    const maxDistance = this.boundsEnd.distanceTo(this.boundsStart) / 2
+
+    // find the shortest axis
+    const axes = ['x', 'y', 'z'] as const
+
+    const axis = axes.reduce(
+      (acc, dim) => {
+        const d = this.boundsEnd[dim] - this.boundsStart[dim]
+
+        if (d < acc.d) {
+          acc.d = d
+          acc.dim = dim
+        }
+
+        return acc
+      },
+      { d: Infinity, dim: null as null | typeof axes[number] },
+    )
+
+    const minDistance = axis.dim
+      ? this.boundsEnd[axis.dim] - this.boundsStart[axis.dim]
+      : 1
+
+    let factor = distance / minDistance
+
+    const minClamp = 0.25
+    factor -= minClamp
+    factor = Math.min(Math.max(factor, 0), 1)
+    factor /= 1 - minClamp
+    factor = Math.pow(factor, 2)
+
+    const steering = new Vector3()
+      .subVectors(center, this.position)
+      .normalize()
+      .multiplyScalar(factor * 2)
+
+    steering.multiplyScalar(this.keepToCenterFactor)
+
+    this.acceleration.add(steering)
+  }
+
   update(delta?: number): void {
     this.position.add(this.lerpVelocity)
     this.velocity.add(this.acceleration)
@@ -207,11 +260,13 @@ export default class Boid {
     cohereFactor: number,
     separateFactor: number,
     avoidanceFactor: number,
+    keepToCenterFactor: number,
   ): void {
     this.alignFactor = alignFactor
     this.cohereFactor = cohereFactor
     this.separateFactor = separateFactor
     this.avoidanceFactor = avoidanceFactor
+    this.keepToCenterFactor = keepToCenterFactor
   }
 
   setPerceptionRadius(perceptionRadius: number): void {
@@ -244,8 +299,9 @@ export default class Boid {
     return angle < maxAngle
   }
 
-  isNeighborValid(other: Boid): boolean {
+  isNeighborValid(other: Boid, skipType = false): boolean {
     const d = this.position.distanceTo(other.position)
+    if (!skipType && other.type !== this.type) return false
     if (other === this) return false
     if (d >= this.perceptionRadius) return false
     if (this.checkFov && this.isInFieldOfView(other, 45)) return false

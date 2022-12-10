@@ -9,11 +9,23 @@ import Boid from '../Boid'
 
 const boidGeometry = new THREE.SphereGeometry(0.1, 8, 8)
 
-const boidMaterials = [
-  new THREE.MeshStandardMaterial({ color: 'yellow' }),
-  new THREE.MeshStandardMaterial({ color: 'hotpink' }),
-  new THREE.MeshStandardMaterial({ color: 'babyblue' }),
-  new THREE.MeshStandardMaterial({ color: 'black' }),
+const boidTypes = [
+  {
+    material: new THREE.MeshStandardMaterial({ color: 'yellow' }),
+    name: 'yellow',
+  },
+  {
+    material: new THREE.MeshStandardMaterial({ color: 'hotpink' }),
+    name: 'hotpink',
+  },
+  {
+    material: new THREE.MeshStandardMaterial({ color: 'babyblue' }),
+    name: 'babyblue',
+  },
+  {
+    material: new THREE.MeshStandardMaterial({ color: 'black' }),
+    name: 'black',
+  },
 ]
 
 const boidFrontGeometry = new THREE.ConeGeometry(0.1, 0.2, 8)
@@ -41,13 +53,11 @@ export default function Boids(props: IBoidsProps) {
   const lerpedCameraPosition = useRef(new THREE.Vector3(0, 0, 0))
   const lerpedCameraLookAt = useRef(new THREE.Vector3(0, 0, 0))
 
-  const materials = useMemo(
+  const randomizedBoidTypes = useMemo(
     () =>
       new Array(count)
         .fill(0)
-        .map(
-          () => boidMaterials[Math.floor(Math.random() * boidMaterials.length)],
-        ),
+        .map(() => boidTypes[Math.floor(Math.random() * boidTypes.length)]),
     [count],
   )
 
@@ -64,10 +74,11 @@ export default function Boids(props: IBoidsProps) {
 
   const boids = useMemo(
     () =>
-      new Array(count).fill(null).map(() => {
+      new Array(count).fill(null).map((_, i) => {
         const position = randomInBounds()
 
-        const b = new Boid(boundsStart, boundsEnd)
+        const b = new Boid(boundsStart, boundsEnd, randomizedBoidTypes[i].name)
+
         b.position.copy(position)
 
         return b
@@ -80,7 +91,7 @@ export default function Boids(props: IBoidsProps) {
       {boids.map((boid, i) => (
         <mesh
           geometry={boidGeometry}
-          material={materials[i]}
+          material={randomizedBoidTypes[i].material}
           key={i}
           position={boid.position}
           rotation={boid.rotation}
@@ -92,7 +103,10 @@ export default function Boids(props: IBoidsProps) {
             rotation-x={-Math.PI / 2}
             position-z={-0.1}
           />
-          <mesh geometry={boidWingsGeometry} material={materials[i]} />
+          <mesh
+            geometry={boidWingsGeometry}
+            material={randomizedBoidTypes[i].material}
+          />
         </mesh>
       ))}
     </group>
@@ -103,6 +117,7 @@ export default function Boids(props: IBoidsProps) {
     cohesionWeight,
     separationWeight,
     avoidanceWeight,
+    keepToCenterWeight,
     maxSpeed,
     maxForce,
     perceptionRadius,
@@ -112,6 +127,7 @@ export default function Boids(props: IBoidsProps) {
     cohesionWeight: { value: 2, min: 0, max: 10, label: 'Cohesion' },
     separationWeight: { value: 3, min: 0, max: 10, label: 'Separation' },
     avoidanceWeight: { value: 3, min: 0, max: 10, label: 'Avoidance' },
+    keepToCenterWeight: { value: 1, min: 0, max: 10, label: 'Center' },
     maxSpeed: { value: 2, min: 0, max: 10, label: 'Max Speed' },
     maxForce: { value: 1, min: 0, max: 10, label: 'Max Force' },
     perceptionRadius: {
@@ -134,12 +150,14 @@ export default function Boids(props: IBoidsProps) {
         cohesionWeight,
         separationWeight,
         avoidanceWeight,
+        keepToCenterWeight,
       )
       boid.setLimits(maxSpeed, maxForce)
       boid.setPerceptionRadius(perceptionRadius)
       boid.setBounds(boundsStart, boundsEnd)
       boid.flock(boids)
-      boid.avoid(obstacles.current)
+      boid.keepToCenter()
+      // boid.avoid(obstacles.current)
     })
 
     boids.forEach((boid, i) => {
@@ -176,33 +194,23 @@ export default function Boids(props: IBoidsProps) {
     <>
       {boidMeshes}
 
-      {/* Obstacle */}
-      <mesh
-        ref={(ref) => ref && (obstacles.current[0] = ref)}
-        position={[dim - 12, -dim + 15, -dim + 12]}
-        rotation-y={Math.PI / 4}
-      >
-        <meshStandardMaterial color='black' roughness={0.1} />
-        <boxGeometry args={[2, 30, 10]} />
-      </mesh>
-
       {/* Bounds */}
-      <mesh
-        ref={(ref) => ref && (obstacles.current[1] = ref)}
+      {/* <mesh
+        ref={(ref) => ref && (obstacles.current[0] = ref)}
         position-x={-dim}
         material={boundsMaterial}
       >
         <boxGeometry args={[1, 2 * dim, 2 * dim]} />
       </mesh>
       <mesh
-        ref={(ref) => ref && (obstacles.current[2] = ref)}
+        ref={(ref) => ref && (obstacles.current[1] = ref)}
         position-x={dim}
         material={boundsMaterial}
       >
         <boxGeometry args={[1, 2 * dim, 2 * dim]} />
       </mesh>
       <mesh
-        ref={(ref) => ref && (obstacles.current[3] = ref)}
+        ref={(ref) => ref && (obstacles.current[2] = ref)}
         position-y={-dim}
       >
         <boxGeometry args={[2 * dim, 1, 2 * dim]} />
@@ -213,29 +221,29 @@ export default function Boids(props: IBoidsProps) {
         />
       </mesh>
       <mesh
-        ref={(ref) => ref && (obstacles.current[4] = ref)}
+        ref={(ref) => ref && (obstacles.current[3] = ref)}
         position-y={dim}
         material={boundsMaterial}
       >
         <boxGeometry args={[2 * dim, 1, 2 * dim]} />
       </mesh>
       <mesh
-        ref={(ref) => ref && (obstacles.current[5] = ref)}
+        ref={(ref) => ref && (obstacles.current[4] = ref)}
         position-z={-dim}
         material={boundsMaterial}
       >
         <boxGeometry args={[2 * dim, 2 * dim, 1]} />
       </mesh>
       <mesh
-        ref={(ref) => ref && (obstacles.current[6] = ref)}
+        ref={(ref) => ref && (obstacles.current[5] = ref)}
         position-z={dim}
         material={boundsMaterial}
       >
         <boxGeometry args={[2 * dim, 2 * dim, 1]} />
-      </mesh>
+      </mesh> */}
 
       {/* Sphere Obstacle */}
-
+      {/* 
       <mesh
         ref={(ref) => ref && (obstacles.current[7] = ref)}
         position={[8 - dim / 2, -dim - 18, -dim / 2]}
@@ -273,8 +281,17 @@ export default function Boids(props: IBoidsProps) {
       >
         <boxGeometry args={[2, 10, 2 * dim]} />
         <meshStandardMaterial color='BurlyWood' metalness={0} roughness={0.9} />
-      </mesh>
+      </mesh> */}
 
+      {/* Obstacle */}
+      {/* <mesh
+        ref={(ref) => ref && (obstacles.current[0] = ref)}
+        position={[dim - 12, -dim + 15, -dim + 12]}
+        rotation-y={Math.PI / 4}
+      >
+        <meshStandardMaterial color='black' roughness={0.1} />
+        <boxGeometry args={[2, 30, 10]} />
+      </mesh> */}
       {/* torus */}
     </>
   )
